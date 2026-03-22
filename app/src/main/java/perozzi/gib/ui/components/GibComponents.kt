@@ -1,0 +1,206 @@
+package perozzi.gib.ui.components
+
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import perozzi.gib.ui.theme.Accent
+import perozzi.gib.ui.theme.AccentStrong
+import perozzi.gib.ui.theme.Card
+import perozzi.gib.ui.theme.SoftLine
+import perozzi.gib.ui.theme.Warning
+
+@Composable
+fun MetricCard(
+    label: String,
+    value: String,
+    supporting: String,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(containerColor = Card),
+        shape = RoundedCornerShape(20.dp),
+    ) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary)
+            Text(value, style = MaterialTheme.typography.headlineMedium)
+            Text(supporting, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+        }
+    }
+}
+
+@Composable
+fun SectionCard(
+    title: String,
+    subtitle: String? = null,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = Card),
+    ) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(title, style = MaterialTheme.typography.titleLarge)
+                subtitle?.let {
+                    Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+                }
+            }
+            content()
+        }
+    }
+}
+
+@Composable
+fun PartChip(value: Int, onRemove: (() -> Unit)? = null) {
+    AssistChip(
+        onClick = onRemove ?: {},
+        label = {
+            Text(if (onRemove == null) value.toString() else "$value  x")
+        },
+    )
+}
+
+@Composable
+fun SimpleLineChart(
+    values: List<Double>,
+    modifier: Modifier = Modifier,
+    baselineValues: List<Double> = emptyList(),
+) {
+    if (values.isEmpty()) {
+        Surface(
+            modifier = modifier
+                .fillMaxWidth()
+                .height(140.dp)
+                .border(1.dp, SoftLine, RoundedCornerShape(18.dp)),
+            color = Card,
+            shape = RoundedCornerShape(18.dp),
+        ) {
+            Box(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+                Text("Not enough data yet", style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+        return
+    }
+
+    val allValues = values + baselineValues
+    val minValue = allValues.minOrNull() ?: 0.0
+    val maxValue = allValues.maxOrNull() ?: minValue + 1
+    val range = (maxValue - minValue).takeIf { it > 0.0 } ?: 1.0
+
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(160.dp)
+            .border(1.dp, SoftLine, RoundedCornerShape(18.dp)),
+        color = Card,
+        shape = RoundedCornerShape(18.dp),
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize().padding(12.dp)) {
+            fun points(series: List<Double>): List<Offset> =
+                series.mapIndexed { index, value ->
+                    val x = if (series.size == 1) size.width / 2f else index.toFloat() / (series.lastIndex).coerceAtLeast(1) * size.width
+                    val normalized = ((value - minValue) / range).toFloat()
+                    val y = size.height - (normalized * size.height)
+                    Offset(x, y)
+                }
+
+            baselineValues.takeIf { it.isNotEmpty() }?.let { baseline ->
+                val path = Path()
+                points(baseline).forEachIndexed { index, point ->
+                    if (index == 0) path.moveTo(point.x, point.y) else path.lineTo(point.x, point.y)
+                }
+                drawPath(path, Warning.copy(alpha = 0.7f), style = Stroke(width = 4f, cap = StrokeCap.Round))
+            }
+
+            val actualPath = Path()
+            points(values).forEachIndexed { index, point ->
+                if (index == 0) actualPath.moveTo(point.x, point.y) else actualPath.lineTo(point.x, point.y)
+            }
+            drawPath(actualPath, AccentStrong, style = Stroke(width = 5f, cap = StrokeCap.Round))
+        }
+    }
+}
+
+@Composable
+fun SimpleBarChart(
+    values: List<Pair<String, Int>>,
+    modifier: Modifier = Modifier,
+) {
+    if (values.isEmpty()) {
+        Text("No data yet", style = MaterialTheme.typography.bodyMedium)
+        return
+    }
+    val maxValue = values.maxOf { it.second }.coerceAtLeast(1)
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        values.forEach { (label, value) ->
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(label, style = MaterialTheme.typography.bodyMedium)
+                    Text(value.toString(), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                }
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(12.dp)
+                        .background(SoftLine, RoundedCornerShape(99.dp))
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(value / maxValue.toFloat())
+                            .height(12.dp)
+                            .background(Accent, RoundedCornerShape(99.dp))
+                    )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun FrequencyPills(values: Map<String, Int>) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        values.forEach { (label, count) ->
+            Surface(
+                shape = RoundedCornerShape(99.dp),
+                color = Card,
+                tonalElevation = 1.dp,
+                modifier = Modifier.border(1.dp, SoftLine, RoundedCornerShape(99.dp))
+            ) {
+                Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(label, style = MaterialTheme.typography.bodyMedium)
+                    Text(count.toString(), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
+    }
+}
