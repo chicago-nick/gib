@@ -1,5 +1,6 @@
 package perozzi.gib.ui.navigation
 
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -18,6 +19,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import kotlinx.coroutines.delay
 import perozzi.gib.AppContainer
 import perozzi.gib.ui.daily.DailyLogScreen
 import perozzi.gib.ui.daily.DailyLogViewModel
@@ -33,34 +35,49 @@ fun GibApp(container: AppContainer) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route.orEmpty()
+    val showBottomBar = currentRoute != GibDestination.Splash.route
 
     Scaffold(
         bottomBar = {
-            NavigationBar {
-                bottomDestinations.forEach { destination ->
-                    NavigationBarItem(
-                        selected = currentRoute.startsWith(destination.route),
-                        onClick = {
-                            navController.navigate(destination.route) {
-                                popUpTo(navController.graph.findStartDestination().id) {
-                                    saveState = true
+            if (showBottomBar) {
+                NavigationBar {
+                    bottomDestinations.forEach { destination ->
+                        NavigationBarItem(
+                            selected = currentRoute.startsWith(destination.route),
+                            onClick = {
+                                navController.navigate(destination.route) {
+                                    popUpTo(navController.graph.findStartDestination().id) {
+                                        saveState = true
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = true
                                 }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        },
-                        icon = { Icon(destination.icon, contentDescription = destination.label) },
-                        label = { Text(destination.label) },
-                    )
+                            },
+                            icon = { Icon(destination.icon, contentDescription = destination.label) },
+                            label = { Text(destination.label) },
+                        )
+                    }
                 }
             }
         }
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = GibDestination.Daily.route,
+            startDestination = GibDestination.Splash.route,
             modifier = Modifier.padding(innerPadding),
         ) {
+            composable(GibDestination.Splash.route) {
+                LaunchedEffect(Unit) {
+                    delay(1_000)
+                    navController.navigate(GibDestination.Daily.route) {
+                        popUpTo(GibDestination.Splash.route) {
+                            inclusive = true
+                        }
+                        launchSingleTop = true
+                    }
+                }
+                SplashScreen()
+            }
             composable(
                 route = "daily?dateEpochDay={dateEpochDay}",
                 arguments = listOf(navArgument("dateEpochDay") {

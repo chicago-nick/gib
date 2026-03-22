@@ -12,6 +12,7 @@ sealed class GibDestination(
     val label: String,
     val icon: ImageVector,
 ) {
+    data object Splash : GibDestination("splash", "Splash", Icons.Outlined.EditNote)
     data object Daily : GibDestination("daily", "Daily Log", Icons.Outlined.EditNote)
     data object History : GibDestination("history", "History", Icons.Outlined.CalendarMonth)
     data object Trends : GibDestination("trends", "Trends", Icons.Outlined.BarChart)

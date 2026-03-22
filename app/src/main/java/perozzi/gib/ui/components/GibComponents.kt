@@ -1,5 +1,8 @@
 package perozzi.gib.ui.components
 
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -14,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
@@ -27,6 +31,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import perozzi.gib.ui.theme.Accent
@@ -58,8 +63,10 @@ fun MetricCard(
 @Composable
 fun SectionCard(
     title: String,
-    subtitle: String? = null,
     modifier: Modifier = Modifier,
+    subtitle: String? = null,
+    titleStyle: TextStyle? = null,
+    headerContent: @Composable (() -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
     Card(
@@ -67,11 +74,31 @@ fun SectionCard(
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = Card),
     ) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(title, style = MaterialTheme.typography.titleLarge)
-                subtitle?.let {
-                    Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+        Column(
+            modifier = Modifier
+                .animateContentSize(
+                    animationSpec = tween(
+                        durationMillis = 100,
+                        easing = LinearEasing,
+                    )
+                )
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        title,
+                        style = titleStyle ?: MaterialTheme.typography.titleLarge
+                    )
+                    subtitle?.let {
+                        Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+                    }
+                }
+                if (headerContent != null) {
+                    headerContent()
+                } else {
+                    Spacer(modifier = Modifier.size(0.dp))
                 }
             }
             content()
@@ -113,7 +140,7 @@ fun SimpleLineChart(
 
     val allValues = values + baselineValues
     val minValue = allValues.minOrNull() ?: 0.0
-    val maxValue = allValues.maxOrNull() ?: minValue + 1
+    val maxValue = allValues.maxOrNull() ?: (minValue + 1)
     val range = (maxValue - minValue).takeIf { it > 0.0 } ?: 1.0
 
     Surface(
