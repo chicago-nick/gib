@@ -7,6 +7,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -62,7 +63,10 @@ fun GibApp(container: AppContainer) {
                 enter = fadeIn(animationSpec = tween(durationMillis = 180)),
                 exit = fadeOut(animationSpec = tween(durationMillis = 120)),
             ) {
-                NavigationBar {
+                NavigationBar(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.onSurface,
+                ) {
                     bottomDestinations.forEach { destination ->
                         NavigationBarItem(
                             selected = currentRoute.startsWith(destination.route),
@@ -90,7 +94,7 @@ fun GibApp(container: AppContainer) {
         ) {
             composable(GibDestination.Splash.route) {
                 LaunchedEffect(Unit) {
-                    delay(1_780)
+                    delay(2_680)
                     navController.navigate(GibDestination.Daily.route) {
                         popUpTo(GibDestination.Splash.route) {
                             inclusive = true

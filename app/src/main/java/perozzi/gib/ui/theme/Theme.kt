@@ -8,27 +8,32 @@ import androidx.compose.runtime.Composable
 private val LightColors = lightColorScheme(
     primary = AccentStrong,
     secondary = Accent,
+    primaryContainer = Card,
+    secondaryContainer = Canvas,
     surface = Card,
     background = Canvas,
     onPrimary = Card,
+    onPrimaryContainer = Ink,
     onSecondary = Ink,
     onSurface = Ink,
     onBackground = Ink,
 )
 
 private val DarkColors = darkColorScheme(
-    primary = Accent,
-    secondary = AccentStrong,
+    primary = Card,
+    secondary = Accent,
+    primaryContainer = Ink,
     background = Ink,
     surface = ColorTokens.DarkSurface,
     onPrimary = Ink,
+    onPrimaryContainer = Card,
     onSecondary = Card,
     onBackground = Card,
     onSurface = Card,
 )
 
 private object ColorTokens {
-    val DarkSurface = androidx.compose.ui.graphics.Color(0xFF243036)
+    val DarkSurface = androidx.compose.ui.graphics.Color(0xFF1A1A1A)
 }
 
 @Composable

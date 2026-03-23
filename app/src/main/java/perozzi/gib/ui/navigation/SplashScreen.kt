@@ -29,12 +29,12 @@ fun SplashScreen() {
     var showTagline by remember { mutableStateOf(false) }
     val gibOffsetY by animateDpAsState(
         targetValue = if (showTagline) (-18).dp else 0.dp,
-        animationSpec = tween(durationMillis = 180),
+        animationSpec = tween(durationMillis = 280),
         label = "splashGibOffset",
     )
 
     LaunchedEffect(Unit) {
-        kotlinx.coroutines.delay(800)
+        kotlinx.coroutines.delay(1_200)
         showTagline = true
     }
 
@@ -58,9 +58,9 @@ fun SplashScreen() {
             AnimatedVisibility(
                 visible = showTagline,
                 enter = slideInVertically(
-                    animationSpec = tween(durationMillis = 180),
+                    animationSpec = tween(durationMillis = 280),
                     initialOffsetY = { -it / 2 },
-                ) + fadeIn(animationSpec = tween(durationMillis = 120)),
+                ) + fadeIn(animationSpec = tween(durationMillis = 220)),
             ) {
                 Text(
                     text = "Greatness Is Boring",

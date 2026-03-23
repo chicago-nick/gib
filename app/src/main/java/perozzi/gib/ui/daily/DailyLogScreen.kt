@@ -16,8 +16,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.clickable
@@ -43,6 +43,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -273,15 +274,20 @@ fun DailyLogScreen(
                 Text(
                     text = caloriesSoFarSupporting,
                     style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center,
                 )
             }
         }
         item {
             val isExpanded = expandedSections[DailySection.Calories] == true
+            val cardInteractionSource = remember { MutableInteractionSource() }
             SectionCard(
                 title = "Log Calories",
                 contentPadding = PaddingValues(12.dp),
-                modifier = Modifier.clickable {
+                modifier = Modifier.clickable(
+                    interactionSource = cardInteractionSource,
+                    indication = null,
+                ) {
                     expandedSections[DailySection.Calories] = !isExpanded
                 },
                 headerContent = {
@@ -364,10 +370,14 @@ fun DailyLogScreen(
         }
         item {
             val isExpanded = expandedSections[DailySection.Activity] == true
+            val cardInteractionSource = remember { MutableInteractionSource() }
             SectionCard(
                 title = "Log Activity Level today",
                 contentPadding = PaddingValues(12.dp),
-                modifier = Modifier.clickable {
+                modifier = Modifier.clickable(
+                    interactionSource = cardInteractionSource,
+                    indication = null,
+                ) {
                     expandedSections[DailySection.Activity] = !isExpanded
                 },
                 headerContent = {
@@ -408,11 +418,15 @@ fun DailyLogScreen(
         }
         item {
             val isExpanded = expandedSections[DailySection.Weight] == true
+            val cardInteractionSource = remember { MutableInteractionSource() }
             SectionCard(
                 title = "Log Weight",
                 subtitle = "You don't really need to log weight every day. Try to at least log weekly.",
                 contentPadding = PaddingValues(12.dp),
-                modifier = Modifier.clickable {
+                modifier = Modifier.clickable(
+                    interactionSource = cardInteractionSource,
+                    indication = null,
+                ) {
                     expandedSections[DailySection.Weight] = !isExpanded
                 },
                 headerContent = {
@@ -503,16 +517,11 @@ private fun MealSection(
                         value = currentInput,
                         onValueChange = onInputChanged,
                         label = { Text("Add part") },
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(52.dp),
+                        modifier = Modifier.weight(1f),
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     )
-                    Button(
-                        onClick = onAddPart,
-                        modifier = Modifier.height(52.dp),
-                    ) { Text("Add") }
+                    Button(onClick = onAddPart) { Text("Add") }
                 }
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(

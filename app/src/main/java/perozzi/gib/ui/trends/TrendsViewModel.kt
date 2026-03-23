@@ -3,6 +3,7 @@ package perozzi.gib.ui.trends
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -17,6 +18,8 @@ data class TrendsUiState(
     val calorieValues: List<Double> = emptyList(),
     val recommendedValues: List<Double> = emptyList(),
     val weightValues: List<Double> = emptyList(),
+    val weightStartLabel: String = "",
+    val weightEndLabel: String = "",
     val exerciseCounts: Map<String, Int> = emptyMap(),
     val averageCalories: String = "--",
     val averageWeight: String = "--",
@@ -48,13 +51,16 @@ private fun toTrendsUiState(
 ): TrendsUiState {
     val calorieTrend = BehaviorCalculator.calorieTrend(entries).map { it.value }
     val recommendedTrend = BehaviorCalculator.recommendedTrend(entries, settings).map { it.value }
-    val weightTrend = BehaviorCalculator.weightTrend(entries).map { it.value }
+    val weightTrend = BehaviorCalculator.weightTrend(entries)
+    val weightFormatter = DateTimeFormatter.ofPattern("M/d")
     return TrendsUiState(
         calorieValues = calorieTrend,
         recommendedValues = recommendedTrend,
-        weightValues = weightTrend,
+        weightValues = weightTrend.map { it.value },
+        weightStartLabel = weightTrend.firstOrNull()?.date?.format(weightFormatter).orEmpty(),
+        weightEndLabel = weightTrend.lastOrNull()?.date?.format(weightFormatter).orEmpty(),
         exerciseCounts = BehaviorCalculator.exerciseFrequency(entries).mapKeys { it.key.name },
         averageCalories = BehaviorCalculator.rollingCalorieAverage(entries)?.let { "%.0f".format(it) } ?: "--",
-        averageWeight = weightTrend.takeLast(5).takeIf { it.isNotEmpty() }?.average()?.let { "%.1f".format(it) } ?: "--",
+        averageWeight = weightTrend.map { it.value }.takeLast(5).takeIf { it.isNotEmpty() }?.average()?.let { "%.1f".format(it) } ?: "--",
     )
 }

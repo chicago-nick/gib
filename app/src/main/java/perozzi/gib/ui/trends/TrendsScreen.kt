@@ -72,6 +72,8 @@ fun TrendsScreen(state: TrendsUiState) {
                     values = state.weightValues,
                     valueLabel = "Weight",
                     yAxisFormatter = { "${"%.1f".format(it)} lb" },
+                    startLabel = state.weightStartLabel.ifBlank { "Earlier" },
+                    endLabel = state.weightEndLabel.ifBlank { "Most recent" },
                 )
             }
         }

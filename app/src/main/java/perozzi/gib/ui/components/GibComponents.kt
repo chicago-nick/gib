@@ -143,6 +143,8 @@ fun SimpleLineChart(
     valueLabel: String = "Actual",
     baselineLabel: String = "Baseline",
     yAxisFormatter: (Double) -> String = { "%.0f".format(it) },
+    startLabel: String = "Earlier",
+    endLabel: String = "Most recent",
 ) {
     if (values.isEmpty()) {
         Surface(
@@ -259,12 +261,12 @@ fun SimpleLineChart(
             }
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(
-                    "Earlier",
+                    startLabel,
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
                 )
                 Text(
-                    "Most recent",
+                    endLabel,
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
                 )
