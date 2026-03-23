@@ -49,8 +49,8 @@ private fun DayEntryEntity.toDomain(): DayEntry = DayEntry(
         dinner = dinnerParts.toPartList(),
         postDinner = postDinnerParts.toPartList(),
     ),
-    drankAlcohol = drankAlcohol,
-    exerciseLevel = ExerciseLevel.fromValue(exerciseLevel),
+    alcoholDrinks = alcoholDrinks,
+    exerciseLevel = ExerciseLevel.fromScore(exerciseLevel),
     weight = weight,
 )
 
@@ -60,8 +60,8 @@ private fun DayEntry.toEntity(): DayEntryEntity = DayEntryEntity(
     lunchParts = meals.lunch.joinToString(","),
     dinnerParts = meals.dinner.joinToString(","),
     postDinnerParts = meals.postDinner.joinToString(","),
-    drankAlcohol = drankAlcohol,
-    exerciseLevel = exerciseLevel.value,
+    alcoholDrinks = alcoholDrinks,
+    exerciseLevel = exerciseLevel.score,
     weight = weight,
 )
 

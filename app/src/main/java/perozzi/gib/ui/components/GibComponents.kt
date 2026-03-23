@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Spacer
@@ -44,8 +45,9 @@ import perozzi.gib.ui.theme.Warning
 fun MetricCard(
     label: String,
     value: String,
-    supporting: String,
     modifier: Modifier = Modifier,
+    supporting: String? = null,
+    supportingContent: (@Composable () -> Unit)? = null,
 ) {
     Card(
         modifier = modifier,
@@ -55,7 +57,11 @@ fun MetricCard(
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary)
             Text(value, style = MaterialTheme.typography.headlineMedium)
-            Text(supporting, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+            if (supportingContent != null) {
+                supportingContent()
+            } else supporting?.let {
+                Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+            }
         }
     }
 }
@@ -64,8 +70,10 @@ fun MetricCard(
 fun SectionCard(
     title: String,
     modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(16.dp),
     subtitle: String? = null,
     titleStyle: TextStyle? = null,
+    titleContent: @Composable (() -> Unit)? = null,
     headerContent: @Composable (() -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
@@ -82,15 +90,19 @@ fun SectionCard(
                         easing = LinearEasing,
                     )
                 )
-                .padding(16.dp),
+                .padding(contentPadding),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(
-                        title,
-                        style = titleStyle ?: MaterialTheme.typography.titleLarge
-                    )
+                    if (titleContent != null) {
+                        titleContent()
+                    } else {
+                        Text(
+                            title,
+                            style = titleStyle ?: MaterialTheme.typography.titleLarge
+                        )
+                    }
                     subtitle?.let {
                         Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
                     }

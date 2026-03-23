@@ -29,16 +29,25 @@ class BehaviorCalculatorTest {
     }
 
     @Test
-    fun recommendedCalories_includeGoalAndExerciseAdjustment() {
+    fun recommendedCalories_useTargetWeightTimeline() {
         val settings = UserSettings(
             goal = UserGoal.Cut,
-            baseCalorieTarget = 2200,
-            lightExerciseAdjustment = 100,
-            moderateExerciseAdjustment = 250,
-            hardExerciseAdjustment = 400,
+            targetWeightLbs = 190.0,
+            targetDateEpochDay = LocalDate.of(2026, 4, 21).toEpochDay(),
+            sex = perozzi.gib.domain.model.UserSex.Male,
+            heightCm = 178,
+            ageYears = 35,
         )
 
-        assertEquals(2150, BehaviorCalculator.recommendedCalories(settings, ExerciseLevel.Moderate))
+        assertEquals(
+            1810,
+            BehaviorCalculator.recommendedCalories(
+                settings = settings,
+                exerciseLevel = ExerciseLevel.Moderate,
+                currentWeightLbs = 200.0,
+                today = LocalDate.of(2026, 3, 22),
+            )
+        )
     }
 
     @Test

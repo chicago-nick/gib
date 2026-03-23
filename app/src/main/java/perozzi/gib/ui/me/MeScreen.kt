@@ -16,8 +16,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import perozzi.gib.domain.model.ExerciseLevel
 import perozzi.gib.domain.model.UserGoal
+import perozzi.gib.domain.model.UserSex
 import perozzi.gib.ui.components.SectionCard
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -25,8 +25,11 @@ import perozzi.gib.ui.components.SectionCard
 fun MeScreen(
     state: MeUiState,
     onGoalSelected: (UserGoal) -> Unit,
-    onBaseTargetChanged: (String) -> Unit,
-    onExerciseAdjustmentChanged: (ExerciseLevel, String) -> Unit,
+    onTargetWeightLbsChanged: (String) -> Unit,
+    onTargetDateChanged: (String) -> Unit,
+    onSexSelected: (UserSex) -> Unit,
+    onHeightCmChanged: (String) -> Unit,
+    onAgeYearsChanged: (String) -> Unit,
     onSave: () -> Unit,
 ) {
     LazyColumn(
@@ -39,8 +42,8 @@ fun MeScreen(
         }
         item {
             SectionCard(
-                title = "Goal settings",
-                subtitle = "Keep recommendation logic understandable and adjustable.",
+                title = "Goals",
+                subtitle = "Set the weight you want and when you want to reach it.",
             ) {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     UserGoal.entries.forEach { goal ->
@@ -52,9 +55,31 @@ fun MeScreen(
                     }
                 }
                 OutlinedTextField(
-                    value = state.settings.baseCalorieTarget.toString(),
-                    onValueChange = onBaseTargetChanged,
-                    label = { Text("Base calorie target") },
+                    value = state.draftTargetWeightLbs,
+                    onValueChange = { onTargetWeightLbsChanged(it.filter(Char::isDigit)) },
+                    label = { Text("Target weight (lb)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                )
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    OutlinedTextField(
+                        value = state.currentWeightLbs,
+                        onValueChange = {},
+                        label = { Text("Current weight (lb)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        enabled = false,
+                    )
+                    Text(
+                        state.currentWeightSupporting,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    )
+                }
+                OutlinedTextField(
+                    value = state.draftTargetDate,
+                    onValueChange = onTargetDateChanged,
+                    label = { Text("Target date (YYYY-MM-DD)") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                 )
@@ -62,27 +87,29 @@ fun MeScreen(
         }
         item {
             SectionCard(
-                title = "Exercise adjustments",
-                subtitle = "Tune how much extra intake each effort level earns.",
+                title = "BMR profile",
+                subtitle = "Used for calories-out estimation when weight, height, and age are available.",
             ) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    UserSex.entries.forEach { sex ->
+                        FilterChip(
+                            selected = state.settings.sex == sex,
+                            onClick = { onSexSelected(sex) },
+                            label = { Text(sex.label) },
+                        )
+                    }
+                }
                 OutlinedTextField(
-                    value = state.settings.lightExerciseAdjustment.toString(),
-                    onValueChange = { onExerciseAdjustmentChanged(ExerciseLevel.Light, it) },
-                    label = { Text("Light adjustment") },
+                    value = state.draftHeightCm,
+                    onValueChange = { onHeightCmChanged(it.filter(Char::isDigit)) },
+                    label = { Text("Height (cm)") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                 )
                 OutlinedTextField(
-                    value = state.settings.moderateExerciseAdjustment.toString(),
-                    onValueChange = { onExerciseAdjustmentChanged(ExerciseLevel.Moderate, it) },
-                    label = { Text("Moderate adjustment") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                )
-                OutlinedTextField(
-                    value = state.settings.hardExerciseAdjustment.toString(),
-                    onValueChange = { onExerciseAdjustmentChanged(ExerciseLevel.Hard, it) },
-                    label = { Text("Hard adjustment") },
+                    value = state.draftAgeYears,
+                    onValueChange = { onAgeYearsChanged(it.filter(Char::isDigit)) },
+                    label = { Text("Age") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                 )

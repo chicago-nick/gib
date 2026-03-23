@@ -57,7 +57,7 @@ private fun toTrendsUiState(
         recommendedValues = recommendedTrend,
         weightValues = weightTrend,
         weeklyAlcohol = BehaviorCalculator.weeklyAlcoholTallies(entries).takeLast(6),
-        exerciseCounts = BehaviorCalculator.exerciseFrequency(entries).mapKeys { it.key.label },
+        exerciseCounts = BehaviorCalculator.exerciseFrequency(entries).mapKeys { it.key.name },
         averageCalories = BehaviorCalculator.rollingCalorieAverage(entries)?.let { "%.0f".format(it) } ?: "--",
         currentWeekAlcohol = BehaviorCalculator.currentWeekAlcoholCount(entries, LocalDate.now()),
         averageWeight = weightTrend.takeLast(5).takeIf { it.isNotEmpty() }?.average()?.let { "%.1f".format(it) } ?: "--",

@@ -26,6 +26,7 @@ data class DailyLogUiState(
     val selectedDate: LocalDate = LocalDate.now(),
     val entry: DayEntry = DayEntry(LocalDate.now()),
     val settings: UserSettings = UserSettings(),
+    val latestLoggedWeightLbs: Double? = null,
     val totalCalories: Int = 0,
     val recommendedCalories: Int = 0,
     val calorieDelta: Int = 0,
@@ -44,15 +45,17 @@ class DailyLogViewModel(
     val uiState: StateFlow<DailyLogUiState> = combine(
         selectedDate,
         selectedDate.flatMapLatest { dayEntryRepository.observeDay(it) },
-        dayEntryRepository.observeRecentDays(14),
+        dayEntryRepository.observeRecentDays(90),
         settingsRepository.settings,
     ) { date, entry, recentEntries, settings ->
         val resolvedEntry = entry ?: DayEntry(date = date)
-        val summary = BehaviorCalculator.daySummary(resolvedEntry, settings)
+        val latestLoggedWeight = recentEntries.sortedByDescending { it.date }.firstOrNull { it.weight != null }?.weight
+        val summary = BehaviorCalculator.daySummary(resolvedEntry, settings, latestLoggedWeight)
         DailyLogUiState(
             selectedDate = date,
             entry = resolvedEntry,
             settings = settings,
+            latestLoggedWeightLbs = latestLoggedWeight,
             totalCalories = summary.totalCalories,
             recommendedCalories = summary.recommendedCalories,
             calorieDelta = summary.calorieDelta,
@@ -101,8 +104,8 @@ class DailyLogViewModel(
         }
     }
 
-    fun setAlcohol(drank: Boolean) {
-        updateEntry { it.copy(drankAlcohol = drank) }
+    fun setAlcoholDrinks(text: String) {
+        updateEntry { it.copy(alcoholDrinks = text.toIntOrNull()?.coerceAtLeast(0) ?: 0) }
     }
 
     fun setExercise(level: ExerciseLevel) {

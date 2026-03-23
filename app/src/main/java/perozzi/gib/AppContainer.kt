@@ -7,6 +7,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import perozzi.gib.data.local.GibDatabase
+import perozzi.gib.data.local.MIGRATION_1_2
 import perozzi.gib.data.local.RoomDayEntryRepository
 import perozzi.gib.data.local.SeedData
 import perozzi.gib.data.local.SettingsDataStoreRepository
@@ -20,7 +21,9 @@ class AppContainer(context: Context) {
         context,
         GibDatabase::class.java,
         "gib.db"
-    ).fallbackToDestructiveMigration(false).build()
+    ).addMigrations(MIGRATION_1_2)
+        .fallbackToDestructiveMigration(false)
+        .build()
 
     val dayEntryRepository: DayEntryRepository = RoomDayEntryRepository(database.dayEntryDao())
     val settingsRepository: SettingsRepository = SettingsDataStoreRepository(context)

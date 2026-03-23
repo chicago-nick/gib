@@ -1,12 +1,13 @@
 package perozzi.gib.domain.model
 
-enum class ExerciseLevel(val value: Int, val label: String) {
-    None(0, "None"),
-    Light(1, "Light"),
-    Moderate(2, "Moderate"),
-    Hard(3, "Hard");
+enum class ExerciseLevel(val score: Int, val coefficient: Double) {
+    None(0, 1.08),
+    Light(1, 1.20),
+    Moderate(2, 1.30),
+    Hard(3, 1.45),
+    Intense(4, 1.6);
 
     companion object {
-        fun fromValue(value: Int): ExerciseLevel = entries.firstOrNull { it.value == value } ?: None
+        fun fromScore(score: Int): ExerciseLevel = entries.firstOrNull { it.score == score } ?: None
     }
 }

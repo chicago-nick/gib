@@ -68,7 +68,7 @@ fun GibApp(container: AppContainer) {
         ) {
             composable(GibDestination.Splash.route) {
                 LaunchedEffect(Unit) {
-                    delay(1_000)
+                    delay(1_780)
                     navController.navigate(GibDestination.Daily.route) {
                         popUpTo(GibDestination.Splash.route) {
                             inclusive = true
@@ -100,7 +100,7 @@ fun GibApp(container: AppContainer) {
                     onRemoveMealPart = viewModel::removeMealPart,
                     onCopyYesterday = viewModel::copyYesterday,
                     onCopyBucketFromYesterday = viewModel::copyBucketFromYesterday,
-                    onAlcoholChanged = viewModel::setAlcohol,
+                    onAlcoholChanged = viewModel::setAlcoholDrinks,
                     onExerciseChanged = viewModel::setExercise,
                     onWeightChanged = viewModel::setWeight,
                 )
@@ -129,8 +129,11 @@ fun GibApp(container: AppContainer) {
                 MeScreen(
                     state = state,
                     onGoalSelected = viewModel::setGoal,
-                    onBaseTargetChanged = viewModel::setBaseTarget,
-                    onExerciseAdjustmentChanged = viewModel::setExerciseAdjustment,
+                    onTargetWeightLbsChanged = viewModel::setTargetWeightLbs,
+                    onTargetDateChanged = viewModel::setTargetDate,
+                    onSexSelected = viewModel::setSex,
+                    onHeightCmChanged = viewModel::setHeightCm,
+                    onAgeYearsChanged = viewModel::setAgeYears,
                     onSave = viewModel::save,
                 )
             }

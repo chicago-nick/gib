@@ -2,12 +2,15 @@ package perozzi.gib.data.local
 
 import android.content.Context
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import perozzi.gib.domain.model.UserGoal
+import perozzi.gib.domain.model.UserSex
 import perozzi.gib.domain.model.UserSettings
 import perozzi.gib.domain.repository.SettingsRepository
 
@@ -19,28 +22,31 @@ class SettingsDataStoreRepository(
     override val settings: Flow<UserSettings> = context.dataStore.data.map { preferences ->
         UserSettings(
             goal = UserGoal.valueOf(preferences[GoalKey] ?: UserGoal.Maintain.name),
-            baseCalorieTarget = preferences[BaseTargetKey] ?: 2200,
-            lightExerciseAdjustment = preferences[LightAdjustmentKey] ?: 150,
-            moderateExerciseAdjustment = preferences[ModerateAdjustmentKey] ?: 300,
-            hardExerciseAdjustment = preferences[HardAdjustmentKey] ?: 500,
+            targetWeightLbs = preferences[TargetWeightLbsKey],
+            targetDateEpochDay = preferences[TargetDateEpochDayKey],
+            sex = UserSex.valueOf(preferences[SexKey] ?: UserSex.Male.name),
+            heightCm = preferences[HeightCmKey],
+            ageYears = preferences[AgeYearsKey],
         )
     }
 
     override suspend fun update(settings: UserSettings) {
         context.dataStore.edit { preferences ->
             preferences[GoalKey] = settings.goal.name
-            preferences[BaseTargetKey] = settings.baseCalorieTarget
-            preferences[LightAdjustmentKey] = settings.lightExerciseAdjustment
-            preferences[ModerateAdjustmentKey] = settings.moderateExerciseAdjustment
-            preferences[HardAdjustmentKey] = settings.hardExerciseAdjustment
+            settings.targetWeightLbs?.let { preferences[TargetWeightLbsKey] = it } ?: preferences.remove(TargetWeightLbsKey)
+            settings.targetDateEpochDay?.let { preferences[TargetDateEpochDayKey] = it } ?: preferences.remove(TargetDateEpochDayKey)
+            preferences[SexKey] = settings.sex.name
+            settings.heightCm?.let { preferences[HeightCmKey] = it } ?: preferences.remove(HeightCmKey)
+            settings.ageYears?.let { preferences[AgeYearsKey] = it } ?: preferences.remove(AgeYearsKey)
         }
     }
 
     private companion object {
         val GoalKey = stringPreferencesKey("goal")
-        val BaseTargetKey = intPreferencesKey("base_target")
-        val LightAdjustmentKey = intPreferencesKey("light_adjustment")
-        val ModerateAdjustmentKey = intPreferencesKey("moderate_adjustment")
-        val HardAdjustmentKey = intPreferencesKey("hard_adjustment")
+        val TargetWeightLbsKey = doublePreferencesKey("target_weight_lbs")
+        val TargetDateEpochDayKey = longPreferencesKey("target_date_epoch_day")
+        val SexKey = stringPreferencesKey("sex")
+        val HeightCmKey = intPreferencesKey("height_cm")
+        val AgeYearsKey = intPreferencesKey("age_years")
     }
 }

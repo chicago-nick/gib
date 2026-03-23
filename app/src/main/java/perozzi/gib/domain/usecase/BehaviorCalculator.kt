@@ -2,6 +2,7 @@ package perozzi.gib.domain.usecase
 
 import java.time.DayOfWeek
 import java.time.LocalDate
+import java.time.temporal.ChronoUnit
 import java.time.temporal.WeekFields
 import java.util.Locale
 import perozzi.gib.domain.model.ComputedDaySummary
@@ -12,17 +13,49 @@ import perozzi.gib.domain.model.TrendPoint
 import perozzi.gib.domain.model.UserSettings
 
 object BehaviorCalculator {
+    private const val CaloriesPerPound = 3500.0
+
     fun mealTotal(parts: List<Int>): Int = parts.sum()
 
     fun dailyCalories(entry: DayEntry): Int = MealBucket.entries.sumOf { mealTotal(entry.meals.partsFor(it)) }
 
-    fun recommendedCalories(settings: UserSettings, exerciseLevel: ExerciseLevel): Int {
-        return settings.baseCalorieTarget + settings.goal.calorieOffset + settings.adjustmentFor(exerciseLevel)
+    fun baselineCaloriesOut(weightLbs: Double?, settings: UserSettings): Int? {
+        val resolvedWeightLbs = weightLbs ?: return null
+        val heightCm = settings.heightCm ?: return null
+        val ageYears = settings.ageYears ?: return null
+        val weightKg = resolvedWeightLbs * 0.45359237
+        val bmr = (10 * weightKg) + (6.25 * heightCm) - (5 * ageYears) + settings.sex.bmrOffset
+        return bmr.toInt()
     }
 
-    fun daySummary(entry: DayEntry, settings: UserSettings): ComputedDaySummary {
+    fun requiredDailyCalorieAdjustment(
+        currentWeightLbs: Double?,
+        settings: UserSettings,
+        today: LocalDate,
+    ): Int? {
+        val currentWeight = currentWeightLbs ?: return null
+        val targetWeight = settings.targetWeightLbs ?: return null
+        val targetDate = settings.targetDateEpochDay?.let(LocalDate::ofEpochDay) ?: return null
+        val daysRemaining = ChronoUnit.DAYS.between(today, targetDate).toInt().coerceAtLeast(1)
+        val poundsToLosePerDay = (currentWeight - targetWeight) / daysRemaining
+        return (poundsToLosePerDay * CaloriesPerPound).toInt()
+    }
+
+    fun recommendedCalories(
+        settings: UserSettings,
+        exerciseLevel: ExerciseLevel,
+        currentWeightLbs: Double?,
+        today: LocalDate,
+    ): Int {
+        val baseline = baselineCaloriesOut(currentWeightLbs, settings) ?: 0
+        val caloriesOut = (baseline * exerciseLevel.coefficient).toInt()
+        val requiredAdjustment = requiredDailyCalorieAdjustment(currentWeightLbs, settings, today) ?: 0
+        return caloriesOut - requiredAdjustment
+    }
+
+    fun daySummary(entry: DayEntry, settings: UserSettings, currentWeightLbs: Double?): ComputedDaySummary {
         val total = dailyCalories(entry)
-        val recommended = recommendedCalories(settings, entry.exerciseLevel)
+        val recommended = recommendedCalories(settings, entry.exerciseLevel, currentWeightLbs, entry.date)
         return ComputedDaySummary(
             totalCalories = total,
             recommendedCalories = recommended,
@@ -44,12 +77,14 @@ object BehaviorCalculator {
                 "${it.date.year}-W${week.toString().padStart(2, '0')}"
             }
             .toSortedMap()
-            .map { (week, items) -> week to items.count { it.drankAlcohol } }
+            .map { (week, items) -> week to items.sumOf { it.alcoholDrinks } }
     }
 
     fun currentWeekAlcoholCount(entries: List<DayEntry>, today: LocalDate): Int {
         val startOfWeek = today.with(DayOfWeek.MONDAY)
-        return entries.count { it.drankAlcohol && !it.date.isBefore(startOfWeek) && !it.date.isAfter(today) }
+        return entries
+            .filter { !it.date.isBefore(startOfWeek) && !it.date.isAfter(today) }
+            .sumOf { it.alcoholDrinks }
     }
 
     fun weightTrend(entries: List<DayEntry>, windowSize: Int = 5): List<TrendPoint> {
@@ -63,8 +98,19 @@ object BehaviorCalculator {
     fun calorieTrend(entries: List<DayEntry>): List<TrendPoint> =
         entries.sortedBy { it.date }.map { TrendPoint(it.date, dailyCalories(it).toDouble()) }
 
-    fun recommendedTrend(entries: List<DayEntry>, settings: UserSettings): List<TrendPoint> =
-        entries.sortedBy { it.date }.map { TrendPoint(it.date, recommendedCalories(settings, it.exerciseLevel).toDouble()) }
+    fun recommendedTrend(entries: List<DayEntry>, settings: UserSettings): List<TrendPoint> {
+        var lastKnownWeight: Double? = null
+        return entries.sortedBy { it.date }.map { entry ->
+            val effectiveWeight = entry.weight ?: lastKnownWeight
+            if (entry.weight != null) {
+                lastKnownWeight = entry.weight
+            }
+            TrendPoint(
+                entry.date,
+                recommendedCalories(settings, entry.exerciseLevel, effectiveWeight, entry.date).toDouble()
+            )
+        }
+    }
 
     fun exerciseFrequency(entries: List<DayEntry>): Map<ExerciseLevel, Int> {
         return ExerciseLevel.entries.associateWith { level -> entries.count { it.exerciseLevel == level } }
