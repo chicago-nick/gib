@@ -54,6 +54,13 @@ import perozzi.gib.ui.components.MetricCard
 import perozzi.gib.ui.components.PartChip
 import perozzi.gib.ui.components.SectionCard
 
+private enum class DailySection {
+    Calories,
+    Activity,
+    Alcohol,
+    Weight,
+}
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun DailyLogScreen(
@@ -71,15 +78,24 @@ fun DailyLogScreen(
     onWeightChanged: (String) -> Unit,
 ) {
     val inputs = remember { mutableStateMapOf<MealBucket, String>() }
-    var expandedBucket by remember { mutableStateOf<MealBucket?>(null) }
-    var showRecommendedWhyDialog by remember { mutableStateOf(false) }
-    val dateFormatter = DateTimeFormatter.ofPattern("EEE, MMM d")
-    val mealSnapshot = MealBucket.entries.joinToString("|") { bucket ->
-        state.entry.meals.partsFor(bucket).joinToString(",")
+    val expandedBuckets = remember { mutableStateMapOf<MealBucket, Boolean>() }
+    val expandedSections = remember {
+        mutableStateMapOf(
+            DailySection.Calories to false,
+            DailySection.Activity to false,
+            DailySection.Alcohol to false,
+            DailySection.Weight to false,
+        )
     }
+    var showRecommendedWhyDialog by remember { mutableStateOf(false) }
+    var showActivityWhyDialog by remember { mutableStateOf(false) }
+    val dateFormatter = DateTimeFormatter.ofPattern("EEE, MMM d")
 
-    LaunchedEffect(state.selectedDate, mealSnapshot) {
-        expandedBucket = firstUnloggedMealBucket(state.entry.meals)
+    LaunchedEffect(state.selectedDate) {
+        expandedBuckets.clear()
+        firstUnloggedMealBucket(state.entry.meals)?.let { bucket ->
+            expandedBuckets[bucket] = true
+        }
     }
 
     if (showRecommendedWhyDialog) {
@@ -126,6 +142,33 @@ fun DailyLogScreen(
         )
     }
 
+    if (showActivityWhyDialog) {
+        val currentWeight = state.latestLoggedWeightLbs
+        val coefficient = state.entry.exerciseLevel.coefficient
+        val baselineOut = BehaviorCalculator.baselineCaloriesOut(currentWeight, state.settings) ?: 0
+        val activityAdjustedOut = (baselineOut * coefficient).toInt()
+        AlertDialog(
+            onDismissRequest = { showActivityWhyDialog = false },
+            confirmButton = {
+                TextButton(onClick = { showActivityWhyDialog = false }) {
+                    Text("Close")
+                }
+            },
+            title = { Text("Why does this matter?") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("The more active your day is, the more calories you burn (and the more calories you can eat).")
+                    Text("Note how your recommended caloric intake changes when you change your answer here.")
+                    Text("Today's activity level: ${state.entry.exerciseLevel.name}")
+                    Text("Activity coefficient: $coefficient")
+                    Text("Baseline calorie burn before activity (MBR): $baselineOut")
+                    Text("Burn after activity multiplier: $activityAdjustedOut")
+                    Text("That adjusted burn feeds into today's recommended calories: ${state.recommendedCalories}")
+                }
+            },
+        )
+    }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(12.dp),
@@ -154,6 +197,17 @@ fun DailyLogScreen(
             }
         }
         item {
+            val recommendationDelta = state.totalCalories - state.recommendedCalories
+            val deltaSuffix = if (abs(recommendationDelta) <= 100 && recommendationDelta != 0) {
+                " (pretty close)"
+            } else {
+                ""
+            }
+            val caloriesSoFarSupporting = when {
+                recommendationDelta < 0 -> "${abs(recommendationDelta)} under recommended today$deltaSuffix"
+                recommendationDelta > 0 -> "${recommendationDelta} over recommended today$deltaSuffix"
+                else -> "Right on recommended today"
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                 MetricCard(
                     label = "Calories so far today",
@@ -166,7 +220,7 @@ fun DailyLogScreen(
                     modifier = Modifier.weight(1f),
                     supportingContent = {
                         Text(
-                            text = "why ${state.recommendedCalories}?",
+                            text = "Why ${state.recommendedCalories}?",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.clickable { showRecommendedWhyDialog = true },
@@ -175,75 +229,142 @@ fun DailyLogScreen(
                 )
             }
         }
-        items(MealBucket.entries.size) { index ->
-            val bucket = MealBucket.entries[index]
-            val parts = state.entry.meals.partsFor(bucket)
-            val currentInput = inputs[bucket].orEmpty()
-            val isExpanded = expandedBucket == bucket
+        item {
+            val recommendationDelta = state.totalCalories - state.recommendedCalories
+            val deltaSuffix = if (abs(recommendationDelta) <= 100 && recommendationDelta != 0) {
+                " (pretty close)"
+            } else {
+                ""
+            }
+            val caloriesSoFarSupporting = when {
+                recommendationDelta < 0 -> "${abs(recommendationDelta)} under recommended today$deltaSuffix"
+                recommendationDelta > 0 -> "${recommendationDelta} over recommended today$deltaSuffix"
+                else -> "Right on recommended today"
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+            ) {
+                Text(
+                    text = caloriesSoFarSupporting,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+        }
+        item {
+            val isExpanded = expandedSections[DailySection.Calories] == true
             SectionCard(
-                title = "Log ${bucket.label}",
-                subtitle = "Total ${BehaviorCalculator.mealTotal(parts)} calories",
+                title = "Log Calories",
+                subtitle = "${state.totalCalories} so far today",
                 contentPadding = PaddingValues(12.dp),
                 modifier = Modifier.clickable {
-                    expandedBucket = if (isExpanded) null else bucket
+                    expandedSections[DailySection.Calories] = !isExpanded
                 },
                 headerContent = {
                     Icon(
                         imageVector = Icons.Outlined.ExpandMore,
-                        contentDescription = if (isExpanded) "Collapse ${bucket.label}" else "Expand ${bucket.label}",
+                        contentDescription = if (isExpanded) "Collapse Log Calories" else "Expand Log Calories",
                         modifier = Modifier.rotate(if (isExpanded) 180f else 0f),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 },
+            ) {
+                AnimatedVisibility(
+                    visible = isExpanded,
+                    enter = fadeIn(animationSpec = tween(100, easing = LinearEasing)) +
+                        expandVertically(animationSpec = tween(100, easing = LinearEasing)),
+                    exit = fadeOut(animationSpec = tween(100, easing = LinearEasing)) +
+                        shrinkVertically(animationSpec = tween(100, easing = LinearEasing)),
                 ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 0.dp)
-                ) {
-                    AnimatedVisibility(
-                        visible = isExpanded,
-                        enter = fadeIn(animationSpec = tween(100, easing = LinearEasing)) +
-                            expandVertically(animationSpec = tween(100, easing = LinearEasing)),
-                        exit = fadeOut(animationSpec = tween(100, easing = LinearEasing)) +
-                            shrinkVertically(animationSpec = tween(100, easing = LinearEasing)),
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                parts.forEachIndexed { partIndex, value ->
-                                    PartChip(value = value) { onRemoveMealPart(bucket, partIndex) }
-                                }
-                            }
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                                OutlinedTextField(
-                                    value = currentInput,
-                                    onValueChange = { inputs[bucket] = it.filter(Char::isDigit) },
-                                    label = { Text("Add part") },
-                                    modifier = Modifier.weight(1f),
-                                    singleLine = true,
-                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                )
-                                Button(
-                                    onClick = {
-                                        currentInput.toIntOrNull()?.let { onAddMealPart(bucket, it) }
-                                        inputs[bucket] = ""
+                        MealBucket.entries.forEach { bucket ->
+                            val parts = state.entry.meals.partsFor(bucket)
+                            val currentInput = inputs[bucket].orEmpty()
+                            val isMealExpanded = expandedBuckets[bucket] == true
+                            MealSection(
+                                bucket = bucket,
+                                parts = parts,
+                                currentInput = currentInput,
+                                isExpanded = isMealExpanded,
+                                yesterdayAvailable = state.yesterdayAvailable,
+                                onToggleExpanded = {
+                                    if (isMealExpanded) {
+                                        expandedBuckets.remove(bucket)
+                                    } else {
+                                        expandedBuckets[bucket] = true
                                     }
-                                ) { Text("Add") }
-                            }
-                            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                },
+                                onInputChanged = { inputs[bucket] = it.filter(Char::isDigit) },
+                                onAddPart = {
+                                    currentInput.toIntOrNull()?.let { onAddMealPart(bucket, it) }
+                                    inputs[bucket] = ""
+                                    expandedBuckets[bucket] = true
+                                    nextMealBucketAfter(bucket, state.entry.meals)?.let { nextBucket ->
+                                        expandedBuckets[nextBucket] = true
+                                    }
+                                },
+                                onRemovePart = { index -> onRemoveMealPart(bucket, index) },
+                                onCopyYesterday = {
+                                    onCopyBucketFromYesterday(bucket)
+                                    expandedBuckets[bucket] = true
+                                    nextMealBucketAfter(bucket, state.entry.meals)?.let { nextBucket ->
+                                        expandedBuckets[nextBucket] = true
+                                    }
+                                },
+                                onQuickAdd = {
+                                    onQuickAdd(bucket, 100)
+                                    expandedBuckets[bucket] = true
+                                    nextMealBucketAfter(bucket, state.entry.meals)?.let { nextBucket ->
+                                        expandedBuckets[nextBucket] = true
+                                    }
+                                },
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        item {
+            val isExpanded = expandedSections[DailySection.Activity] == true
+            SectionCard(
+                title = "Log Activity Level today",
+                contentPadding = PaddingValues(12.dp),
+                modifier = Modifier.clickable {
+                    expandedSections[DailySection.Activity] = !isExpanded
+                },
+                headerContent = {
+                    Icon(
+                        imageVector = Icons.Outlined.ExpandMore,
+                        contentDescription = if (isExpanded) "Collapse Log Activity Level today" else "Expand Log Activity Level today",
+                        modifier = Modifier.rotate(if (isExpanded) 180f else 0f),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                },
+            ) {
+                AnimatedVisibility(
+                    visible = isExpanded,
+                    enter = fadeIn(animationSpec = tween(100, easing = LinearEasing)) +
+                        expandVertically(animationSpec = tween(100, easing = LinearEasing)),
+                    exit = fadeOut(animationSpec = tween(100, easing = LinearEasing)) +
+                        shrinkVertically(animationSpec = tween(100, easing = LinearEasing)),
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = "What is this?",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.clickable { showActivityWhyDialog = true },
+                        )
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            ExerciseLevel.entries.forEach { level ->
                                 FilterChip(
-                                    selected = false,
-                                    onClick = { onCopyBucketFromYesterday(bucket) },
-                                    label = { Text("Copy yesterday's meal") },
-                                    enabled = state.yesterdayAvailable,
+                                    selected = state.entry.exerciseLevel == level,
+                                    onClick = { onExerciseChanged(level) },
+                                    label = { Text(level.name) },
                                 )
-                                listOf(100).forEach { quickValue ->
-                                    FilterChip(
-                                        selected = false,
-                                        onClick = { onQuickAdd(bucket, quickValue) },
-                                        label = { Text("+$quickValue") },
-                                    )
-                                }
                             }
                         }
                     }
@@ -251,46 +372,84 @@ fun DailyLogScreen(
             }
         }
         item {
+            val isExpanded = expandedSections[DailySection.Alcohol] == true
             SectionCard(
-                title = "Other signals",
-                subtitle = "Simple daily context. No extra ceremony.",
+                title = "Log Alcohol",
+                subtitle = "Number of drinks for the day.",
                 contentPadding = PaddingValues(12.dp),
+                modifier = Modifier.clickable {
+                    expandedSections[DailySection.Alcohol] = !isExpanded
+                },
+                headerContent = {
+                    Icon(
+                        imageVector = Icons.Outlined.ExpandMore,
+                        contentDescription = if (isExpanded) "Collapse Log Alcohol" else "Expand Log Alcohol",
+                        modifier = Modifier.rotate(if (isExpanded) 180f else 0f),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                },
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                AnimatedVisibility(
+                    visible = isExpanded,
+                    enter = fadeIn(animationSpec = tween(100, easing = LinearEasing)) +
+                        expandVertically(animationSpec = tween(100, easing = LinearEasing)),
+                    exit = fadeOut(animationSpec = tween(100, easing = LinearEasing)) +
+                        shrinkVertically(animationSpec = tween(100, easing = LinearEasing)),
                 ) {
-                    Column {
-                        Text("Alcohol", style = MaterialTheme.typography.titleMedium)
-                        Text("Number of drinks for the day", style = MaterialTheme.typography.bodyMedium)
-                    }
-                }
-                OutlinedTextField(
-                    value = state.entry.alcoholDrinks.takeIf { it > 0 }?.toString().orEmpty(),
-                    onValueChange = { onAlcoholChanged(it.filter(Char::isDigit)) },
-                    label = { Text("Drinks") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                )
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Exercise level", style = MaterialTheme.typography.titleMedium)
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        ExerciseLevel.entries.forEach { level ->
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        (0..10).forEach { drinks ->
                             FilterChip(
-                                selected = state.entry.exerciseLevel == level,
-                                onClick = { onExerciseChanged(level) },
-                                label = { Text(level.name) },
+                                selected = state.entry.alcoholDrinks == drinks,
+                                onClick = { onAlcoholChanged(drinks.toString()) },
+                                label = { Text(drinks.toString()) },
                             )
                         }
+                        FilterChip(
+                            selected = state.entry.alcoholDrinks > 10,
+                            onClick = { onAlcoholChanged("11") },
+                            label = { Text("10+") },
+                        )
                     }
                 }
-                OutlinedTextField(
-                    value = state.entry.weight?.toString().orEmpty(),
-                    onValueChange = onWeightChanged,
-                    label = { Text("Weight (lb)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                )
+            }
+        }
+        item {
+            val isExpanded = expandedSections[DailySection.Weight] == true
+            SectionCard(
+                title = "Log Weight",
+                subtitle = "You don't really need to log weight every day. Try to at least log weekly.",
+                contentPadding = PaddingValues(12.dp),
+                modifier = Modifier.clickable {
+                    expandedSections[DailySection.Weight] = !isExpanded
+                },
+                headerContent = {
+                    Icon(
+                        imageVector = Icons.Outlined.ExpandMore,
+                        contentDescription = if (isExpanded) "Collapse Log Weight" else "Expand Log Weight",
+                        modifier = Modifier.rotate(if (isExpanded) 180f else 0f),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                },
+            ) {
+                AnimatedVisibility(
+                    visible = isExpanded,
+                    enter = fadeIn(animationSpec = tween(100, easing = LinearEasing)) +
+                        expandVertically(animationSpec = tween(100, easing = LinearEasing)),
+                    exit = fadeOut(animationSpec = tween(100, easing = LinearEasing)) +
+                        shrinkVertically(animationSpec = tween(100, easing = LinearEasing)),
+                ) {
+                    OutlinedTextField(
+                        value = state.entry.weight?.toString().orEmpty(),
+                        onValueChange = onWeightChanged,
+                        label = { Text("Weight (lb)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                    )
+                }
             }
         }
         item {
@@ -303,5 +462,95 @@ fun DailyLogScreen(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun MealSection(
+    bucket: MealBucket,
+    parts: List<Int>,
+    currentInput: String,
+    isExpanded: Boolean,
+    yesterdayAvailable: Boolean,
+    onToggleExpanded: () -> Unit,
+    onInputChanged: (String) -> Unit,
+    onAddPart: () -> Unit,
+    onRemovePart: (Int) -> Unit,
+    onCopyYesterday: () -> Unit,
+    onQuickAdd: () -> Unit,
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onToggleExpanded),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text("Log ${bucket.label}", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    "Total ${BehaviorCalculator.mealTotal(parts)} calories",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+            Icon(
+                imageVector = Icons.Outlined.ExpandMore,
+                contentDescription = if (isExpanded) "Collapse ${bucket.label}" else "Expand ${bucket.label}",
+                modifier = Modifier.rotate(if (isExpanded) 180f else 0f),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        AnimatedVisibility(
+            visible = isExpanded,
+            enter = fadeIn(animationSpec = tween(100, easing = LinearEasing)) +
+                expandVertically(animationSpec = tween(100, easing = LinearEasing)),
+            exit = fadeOut(animationSpec = tween(100, easing = LinearEasing)) +
+                shrinkVertically(animationSpec = tween(100, easing = LinearEasing)),
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    parts.forEachIndexed { partIndex, value ->
+                        PartChip(value = value) { onRemovePart(partIndex) }
+                    }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    OutlinedTextField(
+                        value = currentInput,
+                        onValueChange = onInputChanged,
+                        label = { Text("Add part") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    )
+                    Button(onClick = onAddPart) { Text("Add") }
+                }
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(
+                        selected = false,
+                        onClick = onCopyYesterday,
+                        label = { Text("Copy yesterday's meal") },
+                        enabled = yesterdayAvailable,
+                    )
+                    FilterChip(
+                        selected = false,
+                        onClick = onQuickAdd,
+                        label = { Text("+100") },
+                    )
+                }
+            }
+        }
+    }
+}
+
 private fun firstUnloggedMealBucket(meals: perozzi.gib.domain.model.MealParts): MealBucket? =
     MealBucket.entries.firstOrNull { bucket -> meals.partsFor(bucket).isEmpty() }
+
+private fun nextMealBucketAfter(
+    current: MealBucket,
+    meals: perozzi.gib.domain.model.MealParts,
+): MealBucket? = MealBucket.entries
+    .dropWhile { it != current }
+    .drop(1)
+    .firstOrNull { bucket -> meals.partsFor(bucket).isEmpty() }

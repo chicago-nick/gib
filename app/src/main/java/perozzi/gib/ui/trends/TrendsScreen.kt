@@ -29,8 +29,18 @@ fun TrendsScreen(state: TrendsUiState) {
         }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                MetricCard("Calories", state.averageCalories, "7-day average", modifier = Modifier.weight(1f))
-                MetricCard("Alcohol", state.currentWeekAlcohol.toString(), "Current week", modifier = Modifier.weight(1f))
+                MetricCard(
+                    label = "Calories",
+                    value = state.averageCalories,
+                    modifier = Modifier.weight(1f),
+                    supporting = "7-day average",
+                )
+                MetricCard(
+                    label = "Alcohol",
+                    value = state.currentWeekAlcohol.toString(),
+                    modifier = Modifier.weight(1f),
+                    supporting = "Current week",
+                )
             }
         }
         item {
@@ -46,7 +56,11 @@ fun TrendsScreen(state: TrendsUiState) {
                 title = "Weight trend",
                 subtitle = "Smoothed rolling average from logged weigh-ins.",
             ) {
-                MetricCard("Weight", state.averageWeight, "Recent smoothed average")
+                MetricCard(
+                    label = "Weight",
+                    value = state.averageWeight,
+                    supporting = "Recent smoothed average",
+                )
                 SimpleLineChart(values = state.weightValues)
             }
         }

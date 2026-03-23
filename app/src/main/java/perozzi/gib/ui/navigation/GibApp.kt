@@ -1,5 +1,9 @@
 package perozzi.gib.ui.navigation
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
@@ -9,6 +13,9 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -23,6 +30,7 @@ import kotlinx.coroutines.delay
 import perozzi.gib.AppContainer
 import perozzi.gib.ui.daily.DailyLogScreen
 import perozzi.gib.ui.daily.DailyLogViewModel
+import perozzi.gib.ui.greatness.GreatnessScreen
 import perozzi.gib.ui.history.HistoryScreen
 import perozzi.gib.ui.history.HistoryViewModel
 import perozzi.gib.ui.me.MeScreen
@@ -36,10 +44,24 @@ fun GibApp(container: AppContainer) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route.orEmpty()
     val showBottomBar = currentRoute != GibDestination.Splash.route
+    var bottomBarVisible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(showBottomBar) {
+        if (showBottomBar) {
+            delay(500)
+            bottomBarVisible = true
+        } else {
+            bottomBarVisible = false
+        }
+    }
 
     Scaffold(
         bottomBar = {
-            if (showBottomBar) {
+            AnimatedVisibility(
+                visible = bottomBarVisible,
+                enter = fadeIn(animationSpec = tween(durationMillis = 180)),
+                exit = fadeOut(animationSpec = tween(durationMillis = 120)),
+            ) {
                 NavigationBar {
                     bottomDestinations.forEach { destination ->
                         NavigationBarItem(
@@ -77,6 +99,9 @@ fun GibApp(container: AppContainer) {
                     }
                 }
                 SplashScreen()
+            }
+            composable(GibDestination.About.route) {
+                GreatnessScreen()
             }
             composable(
                 route = "daily?dateEpochDay={dateEpochDay}",

@@ -1,9 +1,11 @@
 package perozzi.gib.ui.navigation
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.EditNote
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.PersonOutline
 import androidx.compose.ui.graphics.vector.ImageVector
 
@@ -13,6 +15,7 @@ sealed class GibDestination(
     val icon: ImageVector,
 ) {
     data object Splash : GibDestination("splash", "Splash", Icons.Outlined.EditNote)
+    data object About : GibDestination("about", "GIB", Icons.Outlined.Info)
     data object Daily : GibDestination("daily", "Daily Log", Icons.Outlined.EditNote)
     data object History : GibDestination("history", "History", Icons.Outlined.CalendarMonth)
     data object Trends : GibDestination("trends", "Trends", Icons.Outlined.BarChart)
@@ -20,6 +23,7 @@ sealed class GibDestination(
 }
 
 val bottomDestinations = listOf(
+    GibDestination.About,
     GibDestination.Daily,
     GibDestination.History,
     GibDestination.Trends,
