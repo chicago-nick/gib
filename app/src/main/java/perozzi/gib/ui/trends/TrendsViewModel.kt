@@ -3,7 +3,6 @@ package perozzi.gib.ui.trends
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import java.time.LocalDate
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -18,10 +17,8 @@ data class TrendsUiState(
     val calorieValues: List<Double> = emptyList(),
     val recommendedValues: List<Double> = emptyList(),
     val weightValues: List<Double> = emptyList(),
-    val weeklyAlcohol: List<Pair<String, Int>> = emptyList(),
     val exerciseCounts: Map<String, Int> = emptyMap(),
     val averageCalories: String = "--",
-    val currentWeekAlcohol: Int = 0,
     val averageWeight: String = "--",
 )
 
@@ -56,10 +53,8 @@ private fun toTrendsUiState(
         calorieValues = calorieTrend,
         recommendedValues = recommendedTrend,
         weightValues = weightTrend,
-        weeklyAlcohol = BehaviorCalculator.weeklyAlcoholTallies(entries).takeLast(6),
         exerciseCounts = BehaviorCalculator.exerciseFrequency(entries).mapKeys { it.key.name },
         averageCalories = BehaviorCalculator.rollingCalorieAverage(entries)?.let { "%.0f".format(it) } ?: "--",
-        currentWeekAlcohol = BehaviorCalculator.currentWeekAlcoholCount(entries, LocalDate.now()),
         averageWeight = weightTrend.takeLast(5).takeIf { it.isNotEmpty() }?.average()?.let { "%.1f".format(it) } ?: "--",
     )
 }

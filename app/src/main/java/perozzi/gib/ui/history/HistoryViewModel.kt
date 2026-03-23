@@ -29,7 +29,6 @@ data class HistoryRowUiModel(
     val caloriesIn: Int,
     val caloriesOut: Int,
     val net: HistoryNetUiModel,
-    val alcoholDrinks: Int,
     val exerciseLabel: String,
     val weight: String,
     val mealDetails: List<Pair<String, String>>,
@@ -112,7 +111,6 @@ private fun toRowModel(
             text = netValue.toSignedString(),
             isFavorable = isNetFavorable(netValue, settings.goal),
         ),
-        alcoholDrinks = entry.alcoholDrinks,
         exerciseLabel = entry.exerciseLevel.name,
         weight = entry.weight?.let { "%.1f".format(it) } ?: "--",
         mealDetails = MealBucket.entries.map { bucket ->

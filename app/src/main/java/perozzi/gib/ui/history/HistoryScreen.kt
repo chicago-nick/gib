@@ -61,7 +61,15 @@ fun HistoryScreen(
 ) {
     val formatter = DateTimeFormatter.ofPattern("M/d")
     val horizontalScrollState = rememberScrollState()
-    var visibleColumns by remember { mutableStateOf(HistoryColumn.entries.toSet()) }
+    var visibleColumns by remember {
+        mutableStateOf(
+            HistoryColumn.entries.toSet() - setOf(
+                HistoryColumn.CaloriesIn,
+                HistoryColumn.CaloriesOut,
+                HistoryColumn.Exercise,
+            )
+        )
+    }
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
@@ -135,8 +143,7 @@ fun HistoryScreen(
                         HistoryColumn.CaloriesIn to HistoryCellUiModel("C In"),
                         HistoryColumn.CaloriesOut to HistoryCellUiModel("C Out"),
                         HistoryColumn.Net to HistoryCellUiModel("C Net"),
-                        HistoryColumn.Alcohol to HistoryCellUiModel("Alc"),
-                        HistoryColumn.Exercise to HistoryCellUiModel("Ex"),
+                        HistoryColumn.Exercise to HistoryCellUiModel("Activity"),
                         HistoryColumn.Weight to HistoryCellUiModel("Lbs"),
                     ),
                     visibleColumns = visibleColumns,
@@ -166,7 +173,6 @@ fun HistoryScreen(
                                 color = if (row.net.isFavorable) AccentStrong else Warning,
                                 fontWeight = FontWeight.Bold,
                             ),
-                            HistoryColumn.Alcohol to HistoryCellUiModel(row.alcoholDrinks.toString()),
                             HistoryColumn.Exercise to HistoryCellUiModel(row.exerciseLabel),
                             HistoryColumn.Weight to HistoryCellUiModel(row.weight.ifBlank { "-" }),
                         ),
@@ -199,6 +205,14 @@ fun HistoryScreen(
                         shrinkVertically(animationSpec = tween(100, easing = LinearEasing)),
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text("Calories in: ${row.caloriesIn}", style = MaterialTheme.typography.bodyMedium)
+                        Text("Calories out: ${row.caloriesOut}", style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            "Net calories: ${row.net.text}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (row.net.isFavorable) AccentStrong else Warning,
+                            fontWeight = FontWeight.Medium,
+                        )
                         row.mealDetails.forEach { (meal, detail) ->
                             Text("$meal: $detail", style = MaterialTheme.typography.bodyMedium)
                         }
@@ -218,9 +232,8 @@ private enum class HistoryColumn(
     CaloriesIn("C In", 44.dp, TextAlign.Start),
     CaloriesOut("C Out", 44.dp, TextAlign.Start),
     Net("C Net", 44.dp, TextAlign.Start),
-    Alcohol("Alc", 40.dp, TextAlign.Start),
-    Exercise("Ex", 60.dp, TextAlign.Left),
-    Weight("Lbs", 60.dp, TextAlign.End),
+    Exercise("Activity", 80.dp, TextAlign.Start),
+    Weight("Lbs", 60.dp, TextAlign.Start),
 }
 
 private val HistoryColumnSpacing = 8.dp

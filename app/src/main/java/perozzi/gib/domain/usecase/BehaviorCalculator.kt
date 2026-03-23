@@ -1,10 +1,7 @@
 package perozzi.gib.domain.usecase
 
-import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
-import java.time.temporal.WeekFields
-import java.util.Locale
 import perozzi.gib.domain.model.ComputedDaySummary
 import perozzi.gib.domain.model.DayEntry
 import perozzi.gib.domain.model.ExerciseLevel
@@ -63,28 +60,15 @@ object BehaviorCalculator {
         )
     }
 
-    fun rollingCalorieAverage(entries: List<DayEntry>, windowSize: Int = 7): Double? {
-        if (entries.isEmpty()) return null
-        val recent = entries.sortedBy { it.date }.takeLast(windowSize)
+    fun rollingCalorieAverage(
+        entries: List<DayEntry>,
+        windowSize: Int = 7,
+        excludedDate: LocalDate = LocalDate.now(),
+    ): Double? {
+        val eligibleEntries = entries.filter { it.date != excludedDate }
+        if (eligibleEntries.isEmpty()) return null
+        val recent = eligibleEntries.sortedBy { it.date }.takeLast(windowSize)
         return recent.map(::dailyCalories).average()
-    }
-
-    fun weeklyAlcoholTallies(entries: List<DayEntry>): List<Pair<String, Int>> {
-        val weekFields = WeekFields.of(Locale.US)
-        return entries
-            .groupBy {
-                val week = it.date.get(weekFields.weekOfWeekBasedYear())
-                "${it.date.year}-W${week.toString().padStart(2, '0')}"
-            }
-            .toSortedMap()
-            .map { (week, items) -> week to items.sumOf { it.alcoholDrinks } }
-    }
-
-    fun currentWeekAlcoholCount(entries: List<DayEntry>, today: LocalDate): Int {
-        val startOfWeek = today.with(DayOfWeek.MONDAY)
-        return entries
-            .filter { !it.date.isBefore(startOfWeek) && !it.date.isAfter(today) }
-            .sumOf { it.alcoholDrinks }
     }
 
     fun weightTrend(entries: List<DayEntry>, windowSize: Int = 5): List<TrendPoint> {

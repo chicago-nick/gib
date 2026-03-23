@@ -7,7 +7,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [DayEntryEntity::class],
-    version = 2,
+    version = 3,
     exportSchema = false,
 )
 abstract class GibDatabase : RoomDatabase() {
@@ -49,6 +49,48 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
                 dinnerParts,
                 postDinnerParts,
                 CASE WHEN drankAlcohol = 1 THEN 1 ELSE 0 END,
+                exerciseLevel,
+                weight
+            FROM day_entries
+            """.trimIndent()
+        )
+        db.execSQL("DROP TABLE day_entries")
+        db.execSQL("ALTER TABLE day_entries_new RENAME TO day_entries")
+    }
+}
+
+val MIGRATION_2_3 = object : Migration(2, 3) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS day_entries_new (
+                dateEpochDay INTEGER NOT NULL PRIMARY KEY,
+                breakfastParts TEXT NOT NULL,
+                lunchParts TEXT NOT NULL,
+                dinnerParts TEXT NOT NULL,
+                postDinnerParts TEXT NOT NULL,
+                exerciseLevel INTEGER NOT NULL,
+                weight REAL
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            """
+            INSERT INTO day_entries_new (
+                dateEpochDay,
+                breakfastParts,
+                lunchParts,
+                dinnerParts,
+                postDinnerParts,
+                exerciseLevel,
+                weight
+            )
+            SELECT
+                dateEpochDay,
+                breakfastParts,
+                lunchParts,
+                dinnerParts,
+                postDinnerParts,
                 exerciseLevel,
                 weight
             FROM day_entries

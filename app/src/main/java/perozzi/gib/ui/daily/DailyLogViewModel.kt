@@ -104,10 +104,6 @@ class DailyLogViewModel(
         }
     }
 
-    fun setAlcoholDrinks(text: String) {
-        updateEntry { it.copy(alcoholDrinks = text.toIntOrNull()?.coerceAtLeast(0) ?: 0) }
-    }
-
     fun setExercise(level: ExerciseLevel) {
         updateEntry { it.copy(exerciseLevel = level) }
     }

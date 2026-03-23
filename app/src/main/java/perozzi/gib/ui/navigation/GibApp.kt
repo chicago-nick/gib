@@ -125,7 +125,6 @@ fun GibApp(container: AppContainer) {
                     onRemoveMealPart = viewModel::removeMealPart,
                     onCopyYesterday = viewModel::copyYesterday,
                     onCopyBucketFromYesterday = viewModel::copyBucketFromYesterday,
-                    onAlcoholChanged = viewModel::setAlcoholDrinks,
                     onExerciseChanged = viewModel::setExercise,
                     onWeightChanged = viewModel::setWeight,
                 )

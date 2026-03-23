@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.lazy.LazyColumn
@@ -57,7 +58,6 @@ import perozzi.gib.ui.components.SectionCard
 private enum class DailySection {
     Calories,
     Activity,
-    Alcohol,
     Weight,
 }
 
@@ -73,7 +73,6 @@ fun DailyLogScreen(
     onRemoveMealPart: (MealBucket, Int) -> Unit,
     onCopyYesterday: () -> Unit,
     onCopyBucketFromYesterday: (MealBucket) -> Unit,
-    onAlcoholChanged: (String) -> Unit,
     onExerciseChanged: (ExerciseLevel) -> Unit,
     onWeightChanged: (String) -> Unit,
 ) {
@@ -83,12 +82,12 @@ fun DailyLogScreen(
         mutableStateMapOf(
             DailySection.Calories to false,
             DailySection.Activity to false,
-            DailySection.Alcohol to false,
             DailySection.Weight to false,
         )
     }
     var showRecommendedWhyDialog by remember { mutableStateOf(false) }
     var showActivityWhyDialog by remember { mutableStateOf(false) }
+    var showManualTrackingDialog by remember { mutableStateOf(false) }
     val dateFormatter = DateTimeFormatter.ofPattern("EEE, MMM d")
 
     LaunchedEffect(state.selectedDate) {
@@ -130,13 +129,18 @@ fun DailyLogScreen(
                     Text("Pounds remaining: ${poundsRemaining?.let { abs(it).toInt().toString() } ?: "--"} lb")
                     Text("Converted to calories: ${caloriesRemaining?.toInt()?.toString() ?: "--"}")
                     Text("Target date: ${targetDate?.toString() ?: "--"}")
-                    Text("Days remaining: ${daysRemaining?.toString() ?: "--"}")
+                    Text("Days until then: ${daysRemaining?.toString() ?: "--"}")
                     Text(
-                        text = "Calorie loss needed per day: $requiredAdjustment",
+                        text = "Calorie loss needed per day: ${
+                            caloriesRemaining?.toInt()?.toString() ?: "--"
+                        } ÷ ${daysRemaining?.toString() ?: "--"} = $requiredAdjustment",
                         fontWeight = FontWeight.Bold,
                     )
-                    Text("What you'll burn today: $exerciseAdjustedOut")
-                    Text("Calories in = calories out - daily loss goal = ${state.recommendedCalories}")
+                    Text("Calories you're expected to burn today (based on your MBR and activity level): $exerciseAdjustedOut")
+                    Text(
+                        "Recommended calories in = $exerciseAdjustedOut - $requiredAdjustment = ${state.recommendedCalories}",
+                        fontWeight = FontWeight.Bold,
+                    )
                 }
             },
         )
@@ -164,6 +168,26 @@ fun DailyLogScreen(
                     Text("Baseline calorie burn before activity (MBR): $baselineOut")
                     Text("Burn after activity multiplier: $activityAdjustedOut")
                     Text("That adjusted burn feeds into today's recommended calories: ${state.recommendedCalories}")
+                }
+            },
+        )
+    }
+
+    if (showManualTrackingDialog) {
+        AlertDialog(
+            onDismissRequest = { showManualTrackingDialog = false },
+            confirmButton = {
+                TextButton(onClick = { showManualTrackingDialog = false }) {
+                    Text("Close")
+                }
+            },
+            title = { Text("Why track manually?") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Tracking calories manually is the crux of this entire journey. It is boring and forces you to be aware of the calories you're eating.")
+                    Text("Tracking calories helps teach which foods are calorically light and which are calorically dense. It can also encourage routines in this regard.")
+                    Text("It is no coincidence that the more filling-per-calorie foods tend to be conventionally healthier eating options.")
+                    Text("If you are eating food that is hard to track, such as a plate at a restaurant, I recommend taking a picture and asking your preferred AI agent to estimate it for you.")
                 }
             },
         )
@@ -215,7 +239,7 @@ fun DailyLogScreen(
                     modifier = Modifier.weight(1f),
                 )
                 MetricCard(
-                    label = "Recommended",
+                    label = "Recommended for you",
                     value = state.recommendedCalories.toString(),
                     modifier = Modifier.weight(1f),
                     supportingContent = {
@@ -231,15 +255,16 @@ fun DailyLogScreen(
         }
         item {
             val recommendationDelta = state.totalCalories - state.recommendedCalories
-            val deltaSuffix = if (abs(recommendationDelta) <= 100 && recommendationDelta != 0) {
-                " (pretty close)"
+            val day = if (state.selectedDate == LocalDate.now()) {
+                "today"
             } else {
-                ""
+                "on ${state.selectedDate.format(DateTimeFormatter.ofPattern("M/d"))}"
             }
+            val prefix = if (day == "today") "So far y" else "Y"
             val caloriesSoFarSupporting = when {
-                recommendationDelta < 0 -> "${abs(recommendationDelta)} under recommended today$deltaSuffix"
-                recommendationDelta > 0 -> "${recommendationDelta} over recommended today$deltaSuffix"
-                else -> "Right on recommended today"
+                recommendationDelta < -200 -> "${prefix}ou're ${abs(recommendationDelta)} calories under recommended $day."
+                recommendationDelta > 200 -> "${prefix}ou're ${recommendationDelta} calories over recommended $day."
+                else -> "${prefix}ou're right around recommended $day."
             }
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -255,7 +280,6 @@ fun DailyLogScreen(
             val isExpanded = expandedSections[DailySection.Calories] == true
             SectionCard(
                 title = "Log Calories",
-                subtitle = "${state.totalCalories} so far today",
                 contentPadding = PaddingValues(12.dp),
                 modifier = Modifier.clickable {
                     expandedSections[DailySection.Calories] = !isExpanded
@@ -323,6 +347,17 @@ fun DailyLogScreen(
                                 },
                             )
                         }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center,
+                        ) {
+                            Text(
+                                text = "Why track manually?",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.clickable { showManualTrackingDialog = true },
+                            )
+                        }
                     }
                 }
             }
@@ -372,51 +407,6 @@ fun DailyLogScreen(
             }
         }
         item {
-            val isExpanded = expandedSections[DailySection.Alcohol] == true
-            SectionCard(
-                title = "Log Alcohol",
-                subtitle = "Number of drinks for the day.",
-                contentPadding = PaddingValues(12.dp),
-                modifier = Modifier.clickable {
-                    expandedSections[DailySection.Alcohol] = !isExpanded
-                },
-                headerContent = {
-                    Icon(
-                        imageVector = Icons.Outlined.ExpandMore,
-                        contentDescription = if (isExpanded) "Collapse Log Alcohol" else "Expand Log Alcohol",
-                        modifier = Modifier.rotate(if (isExpanded) 180f else 0f),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                },
-            ) {
-                AnimatedVisibility(
-                    visible = isExpanded,
-                    enter = fadeIn(animationSpec = tween(100, easing = LinearEasing)) +
-                        expandVertically(animationSpec = tween(100, easing = LinearEasing)),
-                    exit = fadeOut(animationSpec = tween(100, easing = LinearEasing)) +
-                        shrinkVertically(animationSpec = tween(100, easing = LinearEasing)),
-                ) {
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        (0..10).forEach { drinks ->
-                            FilterChip(
-                                selected = state.entry.alcoholDrinks == drinks,
-                                onClick = { onAlcoholChanged(drinks.toString()) },
-                                label = { Text(drinks.toString()) },
-                            )
-                        }
-                        FilterChip(
-                            selected = state.entry.alcoholDrinks > 10,
-                            onClick = { onAlcoholChanged("11") },
-                            label = { Text("10+") },
-                        )
-                    }
-                }
-            }
-        }
-        item {
             val isExpanded = expandedSections[DailySection.Weight] == true
             SectionCard(
                 title = "Log Weight",
@@ -452,13 +442,6 @@ fun DailyLogScreen(
                 }
             }
         }
-        item {
-            Text(
-                "The app stays manual on purpose: fast entry, clear totals, no food database friction.",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
-            )
-        }
     }
 }
 
@@ -491,7 +474,7 @@ private fun MealSection(
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text("Log ${bucket.label}", style = MaterialTheme.typography.titleMedium)
                 Text(
-                    "Total ${BehaviorCalculator.mealTotal(parts)} calories",
+                    "= ${BehaviorCalculator.mealTotal(parts)} calories",
                     style = MaterialTheme.typography.bodyMedium,
                 )
             }
@@ -520,11 +503,16 @@ private fun MealSection(
                         value = currentInput,
                         onValueChange = onInputChanged,
                         label = { Text("Add part") },
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(52.dp),
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     )
-                    Button(onClick = onAddPart) { Text("Add") }
+                    Button(
+                        onClick = onAddPart,
+                        modifier = Modifier.height(52.dp),
+                    ) { Text("Add") }
                 }
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(

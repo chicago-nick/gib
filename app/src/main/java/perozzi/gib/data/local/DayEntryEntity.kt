@@ -10,7 +10,6 @@ data class DayEntryEntity(
     val lunchParts: String,
     val dinnerParts: String,
     val postDinnerParts: String,
-    val alcoholDrinks: Int,
     val exerciseLevel: Int,
     val weight: Double?,
 )

@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
@@ -30,6 +31,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -138,6 +140,9 @@ fun SimpleLineChart(
     values: List<Double>,
     modifier: Modifier = Modifier,
     baselineValues: List<Double> = emptyList(),
+    valueLabel: String = "Actual",
+    baselineLabel: String = "Baseline",
+    yAxisFormatter: (Double) -> String = { "%.0f".format(it) },
 ) {
     if (values.isEmpty()) {
         Surface(
@@ -159,38 +164,128 @@ fun SimpleLineChart(
     val minValue = allValues.minOrNull() ?: 0.0
     val maxValue = allValues.maxOrNull() ?: (minValue + 1)
     val range = (maxValue - minValue).takeIf { it > 0.0 } ?: 1.0
+    val midValue = minValue + (range / 2.0)
 
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .height(160.dp)
             .border(1.dp, SoftLine, RoundedCornerShape(18.dp)),
         color = Card,
         shape = RoundedCornerShape(18.dp),
     ) {
-        Canvas(modifier = Modifier.fillMaxSize().padding(12.dp)) {
-            fun points(series: List<Double>): List<Offset> =
-                series.mapIndexed { index, value ->
-                    val x = if (series.size == 1) size.width / 2f else index.toFloat() / (series.lastIndex).coerceAtLeast(1) * size.width
-                    val normalized = ((value - minValue) / range).toFloat()
-                    val y = size.height - (normalized * size.height)
-                    Offset(x, y)
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(
+                    yAxisFormatter(maxValue),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                )
+                if (baselineValues.isNotEmpty()) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        ChartLegend(color = AccentStrong, label = valueLabel)
+                        ChartLegend(color = Warning.copy(alpha = 0.8f), label = baselineLabel)
+                    }
+                } else {
+                    ChartLegend(color = AccentStrong, label = valueLabel)
                 }
+            }
+            Box(modifier = Modifier.fillMaxWidth().height(190.dp)) {
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    fun points(series: List<Double>): List<Offset> =
+                        series.mapIndexed { index, value ->
+                            val x = if (series.size == 1) size.width / 2f else index.toFloat() / (series.lastIndex).coerceAtLeast(1) * size.width
+                            val normalized = ((value - minValue) / range).toFloat()
+                            val y = size.height - (normalized * size.height)
+                            Offset(x, y)
+                        }
 
-            baselineValues.takeIf { it.isNotEmpty() }?.let { baseline ->
-                val path = Path()
-                points(baseline).forEachIndexed { index, point ->
-                    if (index == 0) path.moveTo(point.x, point.y) else path.lineTo(point.x, point.y)
+                    val gridColor = SoftLine.copy(alpha = 0.8f)
+                    val gridLevels = listOf(0f, 0.5f, 1f)
+                    gridLevels.forEach { fraction ->
+                        val y = size.height * fraction
+                        drawLine(
+                            color = gridColor,
+                            start = Offset(0f, y),
+                            end = Offset(size.width, y),
+                            strokeWidth = 2f,
+                        )
+                    }
+
+                    baselineValues.takeIf { it.isNotEmpty() }?.let { baseline ->
+                        val path = Path()
+                        val points = points(baseline)
+                        points.forEachIndexed { index, point ->
+                            if (index == 0) path.moveTo(point.x, point.y) else path.lineTo(point.x, point.y)
+                        }
+                        drawPath(path, Warning.copy(alpha = 0.8f), style = Stroke(width = 4f, cap = StrokeCap.Round))
+                        points.forEach { point ->
+                            drawCircle(
+                                color = Warning.copy(alpha = 0.9f),
+                                radius = 5f,
+                                center = point,
+                            )
+                        }
+                    }
+
+                    val actualPath = Path()
+                    val actualPoints = points(values)
+                    actualPoints.forEachIndexed { index, point ->
+                        if (index == 0) actualPath.moveTo(point.x, point.y) else actualPath.lineTo(point.x, point.y)
+                    }
+                    drawPath(actualPath, AccentStrong, style = Stroke(width = 5f, cap = StrokeCap.Round))
+                    actualPoints.forEach { point ->
+                        drawCircle(
+                            color = AccentStrong,
+                            radius = 5f,
+                            center = point,
+                        )
+                    }
                 }
-                drawPath(path, Warning.copy(alpha = 0.7f), style = Stroke(width = 4f, cap = StrokeCap.Round))
             }
-
-            val actualPath = Path()
-            points(values).forEachIndexed { index, point ->
-                if (index == 0) actualPath.moveTo(point.x, point.y) else actualPath.lineTo(point.x, point.y)
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(
+                    yAxisFormatter(midValue),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
+                )
+                Text(
+                    yAxisFormatter(minValue),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
+                )
             }
-            drawPath(actualPath, AccentStrong, style = Stroke(width = 5f, cap = StrokeCap.Round))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(
+                    "Earlier",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
+                )
+                Text(
+                    "Most recent",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
+                )
+            }
         }
+    }
+}
+
+@Composable
+private fun ChartLegend(color: Color, label: String) {
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = Modifier
+                .size(10.dp)
+                .background(color, RoundedCornerShape(99.dp))
+        )
+        Text(
+            label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
+        )
     }
 }
 

@@ -8,6 +8,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import perozzi.gib.data.local.GibDatabase
 import perozzi.gib.data.local.MIGRATION_1_2
+import perozzi.gib.data.local.MIGRATION_2_3
 import perozzi.gib.data.local.RoomDayEntryRepository
 import perozzi.gib.data.local.SeedData
 import perozzi.gib.data.local.SettingsDataStoreRepository
@@ -21,7 +22,7 @@ class AppContainer(context: Context) {
         context,
         GibDatabase::class.java,
         "gib.db"
-    ).addMigrations(MIGRATION_1_2)
+    ).addMigrations(MIGRATION_1_2, MIGRATION_2_3)
         .fallbackToDestructiveMigration(false)
         .build()
 
